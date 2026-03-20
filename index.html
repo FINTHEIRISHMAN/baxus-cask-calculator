@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cask Calculator | BAXUS</title>
+  <meta name="description" content="Estimate cask maturation, angel's share losses, bottling yield, and tax obligations for whiskey barrels across the US, UK, and Ireland.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black: #000000;
+      --gray1: #1A1A1A;
+      --gray2: #333333;
+      --gray3: #4D4D4D;
+      --gray4: #666666;
+      --gray5: #7F7F7F;
+      --gray6: #999999;
+      --gray7: #B3B3B3;
+      --gray8: #CCCCCC;
+      --gray9: #E5E5E5;
+      --gray10: #F2F2F2;
+      --white: #FFFFFF;
+      --sand3: #F2F4ED;
+      --sand4: #F6F7F1;
+      --sand5: #F9F9F6;
+      --ysand3: #F7F4EE;
+      --teal1: #1C6D72;
+      --teal2: #458D91;
+      --teal3: #73AAAD;
+      --teal4: #8BD3D5;
+      --teal5: #DEEBEC;
+      --teal6: #ECF5F6;
+      --gold1: #B5680E;
+      --gold2: #D2862E;
+      --gold3: #E49402;
+      --gold4: #E8AC09;
+      --gold5: #F5CE64;
+      --gold-gradient: linear-gradient(135deg, #E39302, #F5D64A, #E8AC09);
+      --coral: #DD5E42;
+      --sage: #839D6B;
+      --moss1: #A8BB98;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow-1: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-2: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-3: 0 8px 24px rgba(0,0,0,0.10);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+      font-weight: 400;
+      background: var(--sand3);
+      color: var(--gray1);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray9);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-1);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-svg { height: 32px; width: auto; }
+
+    .header-tag {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--teal1);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: var(--teal6);
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    /* ── MAIN ── */
+    main {
+      flex: 1;
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray1);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .page-subtitle {
+      font-size: 16px;
+      color: var(--gray4);
+      margin-bottom: 40px;
+      max-width: 600px;
+    }
+
+    /* ── STEPS ── */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--gray9);
+      color: var(--gray5);
+      transition: var(--transition);
+    }
+
+    .step-dot.active {
+      background: var(--teal1);
+      color: var(--white);
+    }
+
+    .step-dot.completed {
+      background: var(--teal1);
+      color: var(--white);
+    }
+
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--gray9);
+      transition: var(--transition);
+    }
+
+    .step-line.active { background: var(--teal1); }
+
+    /* ── CARD / SECTION ── */
+    .calc-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 36px;
+      box-shadow: var(--shadow-2);
+      margin-bottom: 24px;
+      transition: var(--transition);
+    }
+
+    .calc-card.hidden { display: none; }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray1);
+      margin-bottom: 6px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--gray5);
+      margin-bottom: 28px;
+    }
+
+    /* ── JURISDICTION SELECTOR ── */
+    .jurisdiction-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .jurisdiction-card {
+      border: 2px solid var(--gray9);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      background: var(--white);
+      position: relative;
+    }
+
+    .jurisdiction-card:hover {
+      border-color: var(--teal3);
+      box-shadow: var(--shadow-2);
+      transform: translateY(-2px);
+    }
+
+    .jurisdiction-card.selected {
+      border-color: var(--teal1);
+      background: var(--teal6);
+    }
+
+    .jurisdiction-card .flag {
+      font-size: 36px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .jurisdiction-card .country-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray1);
+      margin-bottom: 4px;
+    }
+
+    .jurisdiction-card .country-detail {
+      font-size: 12px;
+      color: var(--gray5);
+    }
+
+    .jurisdiction-card .check-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--teal1);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .jurisdiction-card.selected .check-badge { display: flex; }
+
+    /* ── FORM FIELDS ── */
+    .form-group {
+      margin-bottom: 22px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .form-group .helper {
+      font-size: 12px;
+      color: var(--gray5);
+      margin-top: 4px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      height: 48px;
+      border: 1.5px solid var(--gray8);
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      color: var(--gray1);
+      background: rgba(255,255,255,0.6);
+      transition: var(--transition);
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--teal1);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(28,109,114,0.1);
+    }
+
+    input::placeholder { color: var(--gray7); }
+
+    /* Remove number input arrows */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] { -moz-appearance: textfield; }
+
+    /* ── CASK TYPE SELECTOR ── */
+    .cask-type-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .cask-type-card {
+      border: 1.5px solid var(--gray9);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cask-type-card:hover {
+      border-color: var(--teal3);
+      background: var(--sand5);
+    }
+
+    .cask-type-card.selected {
+      border-color: var(--teal1);
+      background: var(--teal6);
+    }
+
+    .cask-type-card .cask-icon {
+      font-size: 28px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--sand4);
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+
+    .cask-type-card.selected .cask-icon { background: rgba(28,109,114,0.1); }
+
+    .cask-type-card .cask-info .cask-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray1);
+    }
+
+    .cask-type-card .cask-info .cask-vol {
+      font-size: 12px;
+      color: var(--gray5);
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 48px;
+      padding: 0 28px;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .btn-primary {
+      background: var(--teal1);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: #155558; }
+    .btn-primary:disabled { background: var(--gray8); color: var(--gray5); cursor: not-allowed; }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1.5px solid var(--gray2);
+      color: var(--gray2);
+    }
+
+    .btn-secondary:hover { background: var(--gray10); }
+
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 32px;
+    }
+
+    .btn-arrow {
+      font-size: 18px;
+      margin-left: 4px;
+    }
+
+    /* ── RESULTS ── */
+    .results-hero {
+      background: var(--gold-gradient);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 24px;
+      color: var(--gray1);
+    }
+
+    .results-hero .results-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    .results-hero .results-value {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .results-hero .results-sub {
+      font-size: 14px;
+      margin-top: 4px;
+      opacity: 0.7;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .result-card {
+      background: var(--white);
+      border: 1px solid var(--gray9);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .result-card .rc-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray5);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .result-card .rc-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray1);
+    }
+
+    .result-card .rc-detail {
+      font-size: 13px;
+      color: var(--gray5);
+      margin-top: 4px;
+    }
+
+    .result-card.highlight {
+      border-color: var(--teal1);
+      background: var(--teal6);
+    }
+
+    .result-card.warning {
+      border-color: var(--gold3);
+      background: #FFF9EB;
+    }
+
+    /* ── BREAKDOWN TABLE ── */
+    .breakdown-section {
+      margin-top: 24px;
+    }
+
+    .breakdown-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gray1);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .breakdown-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .breakdown-table th {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray5);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: left;
+      padding: 10px 16px;
+      background: var(--sand4);
+      border-bottom: 1px solid var(--gray9);
+    }
+
+    .breakdown-table th:last-child { text-align: right; }
+
+    .breakdown-table td {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--gray2);
+      border-bottom: 1px solid var(--gray9);
+    }
+
+    .breakdown-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    .breakdown-table tr.total-row td {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--gray1);
+      border-top: 2px solid var(--gray2);
+      background: var(--sand5);
+    }
+
+    .breakdown-table tr.subtotal-row td {
+      font-weight: 600;
+      color: var(--gray2);
+      background: var(--sand5);
+    }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      background: var(--teal6);
+      border: 1px solid var(--teal5);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .info-box .info-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .info-box p {
+      font-size: 13px;
+      color: var(--gray3);
+      line-height: 1.5;
+    }
+
+    /* ── DISCLAIMER ── */
+    .disclaimer {
+      background: var(--ysand3);
+      border: 1px solid #EDE5D8;
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      margin-top: 20px;
+    }
+
+    .disclaimer p {
+      font-size: 12px;
+      color: var(--gray4);
+      line-height: 1.5;
+    }
+
+    .disclaimer strong { color: var(--gray2); }
+
+    /* ── MATURATION CHART ── */
+    .chart-container {
+      margin-top: 24px;
+      background: var(--white);
+      border: 1px solid var(--gray9);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gray1);
+      margin-bottom: 16px;
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    .chart-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--black);
+      color: var(--white);
+      padding: 40px 0;
+      margin-top: auto;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 32px;
+    }
+
+    .footer-col { min-width: 160px; }
+
+    .footer-col h4 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray6);
+      margin-bottom: 12px;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 14px;
+      color: var(--gray7);
+      text-decoration: none;
+      margin-bottom: 6px;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover { color: var(--white); }
+
+    .footer-col p {
+      font-size: 13px;
+      color: var(--gray6);
+      line-height: 1.5;
+    }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 24px auto 0;
+      padding: 20px 24px 0;
+      border-top: 1px solid var(--gray2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-bottom p {
+      font-size: 12px;
+      color: var(--gray5);
+    }
+
+    .footer-logo svg { height: 24px; }
+
+    /* ── ANIMATIONS ── */
+    .fade-in {
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .jurisdiction-grid { grid-template-columns: 1fr; }
+      .cask-type-grid { grid-template-columns: 1fr; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .results-grid { grid-template-columns: 1fr; }
+      .calc-card { padding: 24px 20px; }
+      .page-title { font-size: 26px; }
+      .results-hero .results-value { font-size: 32px; }
+      .footer-inner { flex-direction: column; }
+      .header-tag { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      main { padding: 24px 16px 40px; }
+      .calc-card { padding: 20px 16px; }
+      .jurisdiction-card { padding: 18px 14px; }
+    }
+
+    /* ── TOOLTIP ── */
+    .tooltip-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gray9);
+      color: var(--gray4);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      margin-left: 6px;
+      position: relative;
+    }
+
+    .tooltip-trigger:hover .tooltip-content {
+      display: block;
+    }
+
+    .tooltip-content {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gray1);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 400;
+      padding: 10px 14px;
+      border-radius: 8px;
+      width: 240px;
+      line-height: 1.5;
+      z-index: 10;
+      box-shadow: var(--shadow-3);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .tooltip-content::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--gray1);
+    }
+
+    /* ── TOGGLE SWITCH FOR UNIT ── */
+    .unit-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .unit-toggle span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray4);
+    }
+
+    .unit-toggle span.active { color: var(--teal1); font-weight: 600; }
+
+    .toggle-track {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: var(--gray8);
+      cursor: pointer;
+      position: relative;
+      transition: var(--transition);
+    }
+
+    .toggle-track.on { background: var(--teal1); }
+
+    .toggle-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--white);
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: var(--transition);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle-track.on .toggle-thumb { left: 22px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <div class="header-inner">
+    <a href="https://baxus.co" target="_blank" rel="noopener">
+      <svg class="logo-svg" viewBox="0 0 1706.03 292.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <defs>
+          <linearGradient id="lg1" x1="732.9" y1="196.18" x2="1017.78" y2="196.18" gradientTransform="translate(1.33 -.89)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e39302"/><stop offset=".5" stop-color="#f5d64a"/><stop offset="1" stop-color="#e8ac09"/></linearGradient>
+          <linearGradient id="lg2" x1="730.26" y1="69.37" x2="918.24" y2="69.37" xlink:href="#lg1"/>
+          <linearGradient id="lg3" x1="882.99" y1="96.04" x2="1015.9" y2="96.04" xlink:href="#lg1"/>
+        </defs>
+        <path fill="#030200" d="m0,5.61h120.08c32.24,0,57.62,9.27,73.74,24.98,12.09,12.49,18.13,27.8,18.13,45.13v.81c0,36.67-22.56,55.61-44.73,65.28,33.44,9.67,60.44,29.82,60.44,68.1v.81c0,48.35-40.7,76.96-102.35,76.96H0V5.61Zm179.71,74.54c0-27.8-22.16-45.93-62.45-45.93H31.43v97.11h83.41c38.68,0,64.87-16.92,64.87-50.37v-.81Zm15.71,127.73c0-30.62-25.39-48.35-74.95-48.35H31.43v99.53h94.69c43.11,0,69.31-18.53,69.31-50.37v-.81Z"/>
+        <path fill="#030200" d="m471.44,3.6h29.82l128.54,284.07h-34.25l-33.04-74.54h-153.52l-33.44,74.54h-32.64L471.44,3.6Zm78.57,180.92l-64.07-143.85-64.47,143.85h128.54Z"/>
+        <path fill="#030200" d="m1122.18,169.61V5.61h31.83v161.98c0,61.25,31.83,95.09,86.23,95.09s85.02-31.43,85.02-93.08V5.61h31.83v161.58c0,82.6-47.14,124.91-117.66,124.91s-117.25-42.71-117.25-122.49Z"/>
+        <path fill="#030200" d="m1494.49,246.57l19.74-23.37c29.41,27,57.62,39.89,96.7,39.89s62.86-20.15,62.86-47.95v-.81c0-26.19-14.1-40.7-73.33-53.59-64.87-14.1-94.69-35.05-94.69-81.39v-.81c0-43.92,39.08-76.96,92.68-76.96,41.5,0,70.11,11.69,99.12,34.65l-18.53,24.58c-26.19-21.36-52.38-30.62-81.39-30.62-37.07,0-60.04,19.74-60.04,45.53v.81c0,26.59,14.1,41.9,76.56,54.8,62.86,14.1,91.87,36.67,91.87,79.78v.81c0,48.35-40.29,79.78-96.3,79.78-45.13,0-81.39-14.51-115.24-45.13Z"/>
+        <path fill="url(#lg1)" d="m1001.53,199.45l-46.08-46.09-19.49,19.49,46.08,46.08c10.49,10.49,11.96,26.1,3.27,34.79-4.07,4.07-9.83,6.05-16.24,5.57-6.76-.51-13.35-3.65-18.55-8.84l-106.02-106.02,21.85-21.85-19.49-19.49-95.09,95.09c-21.69,21.69-23.53,55.16-4.09,74.59,9.02,9.02,21.05,13.46,33.54,13.46,14.42,0,29.43-5.92,41.05-17.55l43.05-43.05-19.49-19.49-43.05,43.05c-10.49,10.49-26.1,11.97-34.79,3.27-4.07-4.07-6.05-9.84-5.57-16.24.51-6.76,3.65-13.35,8.85-18.55l53.75-53.75,106.02,106.02c21.69,21.69,55.16,23.53,74.59,4.09,9.51-9.51,14.26-22.6,13.37-36.85-.87-13.95-7.07-27.36-17.46-37.75Z"/>
+        <path fill="url(#lg2)" d="m796.54,135.45l19.49-19.49-47.4-47.4c-5.2-5.2-8.34-11.78-8.84-18.55-.48-6.4,1.5-12.17,5.57-16.24,4.07-4.07,9.82-6.04,16.24-5.57,6.76.51,13.35,3.65,18.55,8.85l99.92,99.92,19.49-19.49-99.93-99.92c-21.69-21.7-55.16-23.53-74.59-4.09-19.44,19.44-17.6,52.9,4.09,74.59l47.4,47.4Z"/>
+        <path fill="url(#lg3)" d="m948.67,40.27c5.2-5.2,11.78-8.34,18.55-8.84,6.41-.49,12.17,1.5,16.24,5.57,8.69,8.69,7.22,24.29-3.28,34.79l-95.79,95.79,19.49,19.49,95.79-95.79c21.69-21.69,23.53-55.15,4.09-74.59-19.43-19.44-52.9-17.6-74.59,4.09l-44.86,44.86,19.49,19.49,44.86-44.86Z"/>
+      </svg>
+    </a>
+    <span class="header-tag">Cask Calculator</span>
+  </div>
+</header>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main>
+  <h1 class="page-title">Cask Calculator</h1>
+  <p class="page-subtitle">Estimate your barrel's maturation, angel's share, bottling yield, and tax obligations.</p>
+
+  <!-- Step Indicator -->
+  <div class="step-indicator">
+    <div class="step-dot active" id="stepDot1">1</div>
+    <div class="step-line" id="stepLine1"></div>
+    <div class="step-dot" id="stepDot2">2</div>
+    <div class="step-line" id="stepLine2"></div>
+    <div class="step-dot" id="stepDot3">3</div>
+  </div>
+
+  <!-- ═══ STEP 1: Jurisdiction ═══ -->
+  <div class="calc-card fade-in" id="step1">
+    <h2 class="section-title">Where Is Your Barrel Located?</h2>
+    <p class="section-desc">This determines the tax rates and duty calculations we'll use.</p>
+
+    <div class="jurisdiction-grid">
+      <div class="jurisdiction-card" data-jurisdiction="US" onclick="selectJurisdiction('US')">
+        <div class="check-badge">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="flag">🇺🇸</span>
+        <div class="country-name">United States</div>
+        <div class="country-detail">Federal Excise Tax + State</div>
+      </div>
+      <div class="jurisdiction-card" data-jurisdiction="UK" onclick="selectJurisdiction('UK')">
+        <div class="check-badge">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="flag">🇬🇧</span>
+        <div class="country-name">United Kingdom</div>
+        <div class="country-detail">HMRC Duty + VAT</div>
+      </div>
+      <div class="jurisdiction-card" data-jurisdiction="IE" onclick="selectJurisdiction('IE')">
+        <div class="check-badge">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="flag">🇮🇪</span>
+        <div class="country-name">Ireland</div>
+        <div class="country-detail">Excise Duty + VAT</div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <div></div>
+      <button class="btn btn-primary" id="btnStep1Next" disabled onclick="goToStep(2)">
+        Continue <span class="btn-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 2: Cask Details ═══ -->
+  <div class="calc-card hidden" id="step2">
+    <h2 class="section-title">Barrel Details</h2>
+    <p class="section-desc">Tell us about your cask so we can estimate maturation and yield.</p>
+
+    <div class="form-group">
+      <label>Cask Type</label>
+      <div class="cask-type-grid">
+        <div class="cask-type-card" data-cask="bourbon_barrel" onclick="selectCask(this)">
+          <div class="cask-icon">🪵</div>
+          <div class="cask-info">
+            <div class="cask-name">Bourbon Barrel (ASB)</div>
+            <div class="cask-vol">~200L / 53 US Gal</div>
+          </div>
+        </div>
+        <div class="cask-type-card" data-cask="hogshead" onclick="selectCask(this)">
+          <div class="cask-icon">🛢️</div>
+          <div class="cask-info">
+            <div class="cask-name">Hogshead</div>
+            <div class="cask-vol">~250L / 66 US Gal</div>
+          </div>
+        </div>
+        <div class="cask-type-card" data-cask="sherry_butt" onclick="selectCask(this)">
+          <div class="cask-icon">🍷</div>
+          <div class="cask-info">
+            <div class="cask-name">Sherry Butt</div>
+            <div class="cask-vol">~500L / 132 US Gal</div>
+          </div>
+        </div>
+        <div class="cask-type-card" data-cask="quarter_cask" onclick="selectCask(this)">
+          <div class="cask-icon">🥃</div>
+          <div class="cask-info">
+            <div class="cask-name">Quarter Cask</div>
+            <div class="cask-vol">~50L / 13 US Gal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Or enter custom volume
+        <span class="tooltip-trigger">?
+          <span class="tooltip-content">If your cask doesn't match a standard type above, enter the exact volume here. This overrides the cask type selection.</span>
+        </span>
+      </label>
+      <div class="form-row">
+        <input type="number" id="customVolume" placeholder="e.g. 225" oninput="onCustomVolume()">
+        <select id="volumeUnit">
+          <option value="litres">Litres</option>
+          <option value="gallons">US Gallons</option>
+        </select>
+      </div>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid var(--gray9); margin: 28px 0;">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>ABV at Fill (%)
+          <span class="tooltip-trigger">?
+            <span class="tooltip-content">The alcohol by volume percentage when the spirit was originally filled into the cask. Typically 63.5% for Scotch, 62.5% for bourbon.</span>
+          </span>
+        </label>
+        <input type="number" id="abvFill" placeholder="e.g. 63.5" step="0.1" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label>Current ABV (%)
+          <span class="tooltip-trigger">?
+            <span class="tooltip-content">The current ABV of the spirit if you've had it measured. Leave blank and we'll estimate based on age and angel's share rate.</span>
+          </span>
+        </label>
+        <input type="number" id="abvCurrent" placeholder="Leave blank to estimate" step="0.1" min="0" max="100">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Year Filled</label>
+        <input type="number" id="yearFilled" placeholder="e.g. 2018" min="1900" max="2026">
+      </div>
+      <div class="form-group">
+        <label>Planned Bottling Year</label>
+        <input type="number" id="yearBottle" placeholder="e.g. 2030" min="2024" max="2080">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Angel's Share Rate (% per year)
+          <span class="tooltip-trigger">?
+            <span class="tooltip-content">The percentage of spirit lost to evaporation each year. Typically 2% in Scotland/Ireland, 4-6% in warmer climates like Kentucky.</span>
+          </span>
+        </label>
+        <input type="number" id="angelsShare" placeholder="e.g. 2.0" step="0.1" min="0" max="20" value="2.0">
+      </div>
+      <div class="form-group">
+        <label>Target Bottling ABV (%)
+          <span class="tooltip-trigger">?
+            <span class="tooltip-content">The ABV you plan to bottle at. Cask strength means no dilution. Standard bottling is typically 40-46%.</span>
+          </span>
+        </label>
+        <input type="number" id="bottlingAbv" placeholder="e.g. 46" step="0.1" min="20" max="100" value="46">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Estimated Bottle Size</label>
+      <select id="bottleSize">
+        <option value="700">700ml (Standard)</option>
+        <option value="750">750ml (US Standard)</option>
+        <option value="500">500ml</option>
+        <option value="1000">1000ml (1L)</option>
+      </select>
+    </div>
+
+    <div class="info-box">
+      <span class="info-icon">ℹ️</span>
+      <p>Angel's share rates vary significantly by climate. Scottish/Irish warehouses typically see ~2% per year, while Kentucky can see 4-6%. Coastal or tropical climates can be even higher.</p>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="calculateAndShow()">
+        Calculate <span class="btn-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: Results ═══ -->
+  <div class="calc-card hidden" id="step3">
+    <div id="resultsContent"></div>
+
+    <div class="btn-group" style="margin-top: 36px;">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← Edit Details</button>
+      <button class="btn btn-primary" onclick="resetCalculator()">
+        New Calculation
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-col">
+      <svg height="24" viewBox="0 0 1706.03 292.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <defs>
+          <linearGradient id="flg1" x1="732.9" y1="196.18" x2="1017.78" y2="196.18" gradientTransform="translate(1.33 -.89)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e39302"/><stop offset=".5" stop-color="#f5d64a"/><stop offset="1" stop-color="#e8ac09"/></linearGradient>
+          <linearGradient id="flg2" x1="730.26" y1="69.37" x2="918.24" y2="69.37" xlink:href="#flg1"/>
+          <linearGradient id="flg3" x1="882.99" y1="96.04" x2="1015.9" y2="96.04" xlink:href="#flg1"/>
+        </defs>
+        <path fill="#FFFFFF" d="m0,5.61h120.08c32.24,0,57.62,9.27,73.74,24.98,12.09,12.49,18.13,27.8,18.13,45.13v.81c0,36.67-22.56,55.61-44.73,65.28,33.44,9.67,60.44,29.82,60.44,68.1v.81c0,48.35-40.7,76.96-102.35,76.96H0V5.61Zm179.71,74.54c0-27.8-22.16-45.93-62.45-45.93H31.43v97.11h83.41c38.68,0,64.87-16.92,64.87-50.37v-.81Zm15.71,127.73c0-30.62-25.39-48.35-74.95-48.35H31.43v99.53h94.69c43.11,0,69.31-18.53,69.31-50.37v-.81Z"/>
+        <path fill="#FFFFFF" d="m471.44,3.6h29.82l128.54,284.07h-34.25l-33.04-74.54h-153.52l-33.44,74.54h-32.64L471.44,3.6Zm78.57,180.92l-64.07-143.85-64.47,143.85h128.54Z"/>
+        <path fill="#FFFFFF" d="m1122.18,169.61V5.61h31.83v161.98c0,61.25,31.83,95.09,86.23,95.09s85.02-31.43,85.02-93.08V5.61h31.83v161.58c0,82.6-47.14,124.91-117.66,124.91s-117.25-42.71-117.25-122.49Z"/>
+        <path fill="#FFFFFF" d="m1494.49,246.57l19.74-23.37c29.41,27,57.62,39.89,96.7,39.89s62.86-20.15,62.86-47.95v-.81c0-26.19-14.1-40.7-73.33-53.59-64.87-14.1-94.69-35.05-94.69-81.39v-.81c0-43.92,39.08-76.96,92.68-76.96,41.5,0,70.11,11.69,99.12,34.65l-18.53,24.58c-26.19-21.36-52.38-30.62-81.39-30.62-37.07,0-60.04,19.74-60.04,45.53v.81c0,26.59,14.1,41.9,76.56,54.8,62.86,14.1,91.87,36.67,91.87,79.78v.81c0,48.35-40.29,79.78-96.3,79.78-45.13,0-81.39-14.51-115.24-45.13Z"/>
+        <path fill="url(#flg1)" d="m1001.53,199.45l-46.08-46.09-19.49,19.49,46.08,46.08c10.49,10.49,11.96,26.1,3.27,34.79-4.07,4.07-9.83,6.05-16.24,5.57-6.76-.51-13.35-3.65-18.55-8.84l-106.02-106.02,21.85-21.85-19.49-19.49-95.09,95.09c-21.69,21.69-23.53,55.16-4.09,74.59,9.02,9.02,21.05,13.46,33.54,13.46,14.42,0,29.43-5.92,41.05-17.55l43.05-43.05-19.49-19.49-43.05,43.05c-10.49,10.49-26.1,11.97-34.79,3.27-4.07-4.07-6.05-9.84-5.57-16.24.51-6.76,3.65-13.35,8.85-18.55l53.75-53.75,106.02,106.02c21.69,21.69,55.16,23.53,74.59,4.09,9.51-9.51,14.26-22.6,13.37-36.85-.87-13.95-7.07-27.36-17.46-37.75Z"/>
+        <path fill="url(#flg2)" d="m796.54,135.45l19.49-19.49-47.4-47.4c-5.2-5.2-8.34-11.78-8.84-18.55-.48-6.4,1.5-12.17,5.57-16.24,4.07-4.07,9.82-6.04,16.24-5.57,6.76.51,13.35,3.65,18.55,8.85l99.92,99.92,19.49-19.49-99.93-99.92c-21.69-21.7-55.16-23.53-74.59-4.09-19.44,19.44-17.6,52.9,4.09,74.59l47.4,47.4Z"/>
+        <path fill="url(#flg3)" d="m948.67,40.27c5.2-5.2,11.78-8.34,18.55-8.84,6.41-.49,12.17,1.5,16.24,5.57,8.69,8.69,7.22,24.29-3.28,34.79l-95.79,95.79,19.49,19.49,95.79-95.79c21.69-21.69,23.53-55.15,4.09-74.59-19.43-19.44-52.9-17.6-74.59,4.09l-44.86,44.86,19.49,19.49,44.86-44.86Z"/>
+      </svg>
+      <p style="margin-top: 12px;">Liquid Gold. Liquid Assets.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <a href="https://baxus.co" target="_blank">Marketplace</a>
+      <a href="https://baxus.co/about" target="_blank">About</a>
+      <a href="https://baxus.co/news" target="_blank">News</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="https://baxus.co/privacy" target="_blank">Privacy Policy</a>
+      <a href="https://baxus.co/terms" target="_blank">Terms & Conditions</a>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <p>222 Broadway, 23rd Floor<br>New York, NY 10038</p>
+      <a href="mailto:info@baxus.co" style="margin-top: 8px;">info@baxus.co</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>All Rights Reserved. BAXUS 2025</p>
+    <p>This calculator provides estimates only. Consult a tax professional for exact figures.</p>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let state = {
+  jurisdiction: null,
+  caskType: null,
+  currentStep: 1
+};
+
+// Cask default volumes in litres
+const CASK_VOLUMES = {
+  bourbon_barrel: 200,
+  hogshead: 250,
+  sherry_butt: 500,
+  quarter_cask: 50
+};
+
+// Tax data per jurisdiction (2024/2025 rates)
+const TAX_DATA = {
+  US: {
+    name: 'United States',
+    currency: 'USD',
+    symbol: '$',
+    // Federal Excise Tax: $13.50 per proof gallon (first 100k pg for small distillers)
+    // A proof gallon = 1 US gallon at 50% ABV
+    federalExcisePerProofGallon: 13.50,
+    // Note: large producers pay $13.50/pg
+    stateTaxNote: 'State taxes vary ($0.50 - $35+ per gallon depending on state). Not included in this estimate.',
+    vatRate: 0, // No VAT in US
+    vatLabel: 'Sales Tax',
+    salesTaxNote: 'Sales tax varies by state (0-10%). Not included.',
+    dutyNotes: 'Federal Excise Tax (FET) at $13.50/proof gallon. State excise taxes and sales tax vary by state and are not included.'
+  },
+  UK: {
+    name: 'United Kingdom',
+    currency: 'GBP',
+    symbol: '£',
+    // UK Spirits Duty: £31.64 per litre of pure alcohol (from Aug 2023)
+    dutyPerLPA: 31.64,
+    vatRate: 0.20, // 20% VAT
+    vatLabel: 'VAT (20%)',
+    dutyNotes: 'UK Spirits Duty at £31.64 per litre of pure alcohol (LPA). VAT at 20% applies on top of the duty-inclusive price.'
+  },
+  IE: {
+    name: 'Ireland',
+    currency: 'EUR',
+    symbol: '€',
+    // Ireland Excise: €42.57 per litre of pure alcohol
+    dutyPerLPA: 42.57,
+    vatRate: 0.23, // 23% VAT
+    vatLabel: 'VAT (23%)',
+    dutyNotes: 'Irish Alcohol Products Tax at €42.57 per litre of pure alcohol (LPA). VAT at 23% applies on the duty-inclusive price.'
+  }
+};
+
+// ═══════════════════════════════════════
+//  JURISDICTION SELECTION
+// ═══════════════════════════════════════
+function selectJurisdiction(code) {
+  state.jurisdiction = code;
+  document.querySelectorAll('.jurisdiction-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`[data-jurisdiction="${code}"]`).classList.add('selected');
+  document.getElementById('btnStep1Next').disabled = false;
+
+  // Set sensible defaults based on jurisdiction
+  const abvFill = document.getElementById('abvFill');
+  const angelsShare = document.getElementById('angelsShare');
+  const bottleSize = document.getElementById('bottleSize');
+
+  if (code === 'US') {
+    if (!abvFill.value) abvFill.value = '62.5';
+    angelsShare.value = '4.0';
+    bottleSize.value = '750';
+  } else {
+    if (!abvFill.value) abvFill.value = '63.5';
+    angelsShare.value = '2.0';
+    bottleSize.value = '700';
+  }
+}
+
+// ═══════════════════════════════════════
+//  CASK SELECTION
+// ═══════════════════════════════════════
+function selectCask(el) {
+  state.caskType = el.dataset.cask;
+  document.querySelectorAll('.cask-type-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  // Clear custom volume when selecting preset
+  document.getElementById('customVolume').value = '';
+}
+
+function onCustomVolume() {
+  const val = document.getElementById('customVolume').value;
+  if (val && parseFloat(val) > 0) {
+    state.caskType = 'custom';
+    document.querySelectorAll('.cask-type-card').forEach(c => c.classList.remove('selected'));
+  }
+}
+
+// ═══════════════════════════════════════
+//  STEP NAVIGATION
+// ═══════════════════════════════════════
+function goToStep(step) {
+  state.currentStep = step;
+
+  // Hide all steps
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
+
+  // Show target
+  document.getElementById(`step${step}`).classList.remove('hidden');
+  document.getElementById(`step${step}`).classList.add('fade-in');
+
+  // Update dots
+  for (let i = 1; i <= 3; i++) {
+    const dot = document.getElementById(`stepDot${i}`);
+    dot.classList.remove('active', 'completed');
+    if (i < step) {
+      dot.classList.add('completed');
+      dot.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7L6 10L11 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    } else if (i === step) {
+      dot.classList.add('active');
+      dot.textContent = i;
+    } else {
+      dot.textContent = i;
+    }
+  }
+
+  // Update lines
+  document.getElementById('stepLine1').classList.toggle('active', step >= 2);
+  document.getElementById('stepLine2').classList.toggle('active', step >= 3);
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════
+//  CALCULATION ENGINE
+// ═══════════════════════════════════════
+function calculateAndShow() {
+  // Gather inputs
+  const customVol = parseFloat(document.getElementById('customVolume').value);
+  const volUnit = document.getElementById('volumeUnit').value;
+  let fillVolumeLitres;
+
+  if (customVol > 0) {
+    fillVolumeLitres = volUnit === 'gallons' ? customVol * 3.78541 : customVol;
+  } else if (state.caskType && CASK_VOLUMES[state.caskType]) {
+    fillVolumeLitres = CASK_VOLUMES[state.caskType];
+  } else {
+    alert('Please select a cask type or enter a custom volume.');
+    return;
+  }
+
+  const abvFill = parseFloat(document.getElementById('abvFill').value) || 63.5;
+  const abvCurrentInput = document.getElementById('abvCurrent').value;
+  const yearFilled = parseInt(document.getElementById('yearFilled').value) || 2020;
+  const yearBottle = parseInt(document.getElementById('yearBottle').value) || 2030;
+  const angelsShareRate = parseFloat(document.getElementById('angelsShare').value) || 2.0;
+  const bottlingAbv = parseFloat(document.getElementById('bottlingAbv').value) || 46;
+  const bottleSize = parseInt(document.getElementById('bottleSize').value) || 700;
+
+  const maturationYears = yearBottle - yearFilled;
+
+  if (maturationYears < 0) {
+    alert('Bottling year must be after fill year.');
+    return;
+  }
+
+  // ── Angel's share calculation ──
+  // Compound loss: remaining = original * (1 - rate/100)^years
+  const retentionFactor = Math.pow(1 - angelsShareRate / 100, maturationYears);
+  const remainingVolumeLitres = fillVolumeLitres * retentionFactor;
+  const volumeLost = fillVolumeLitres - remainingVolumeLitres;
+
+  // ── ABV estimation ──
+  // ABV drops ~0.3-0.5% per year in Scotland, faster in hot climates
+  // Simple model: ABV drops proportionally but less than volume
+  let abvAtBottling;
+  if (abvCurrentInput && parseFloat(abvCurrentInput) > 0) {
+    abvAtBottling = parseFloat(abvCurrentInput);
+  } else {
+    // Estimate: ABV drops ~0.2-0.5% per year depending on climate
+    const abvDropRate = state.jurisdiction === 'US' ? 0.5 : 0.3;
+    abvAtBottling = Math.max(40, abvFill - (abvDropRate * maturationYears));
+  }
+
+  // ── Litres of Pure Alcohol (LPA) in cask ──
+  const lpaInCask = remainingVolumeLitres * (abvAtBottling / 100);
+
+  // ── Bottling yield ──
+  // If bottling ABV < cask ABV, we can dilute to get more volume
+  let bottlingVolumeLitres;
+  if (bottlingAbv >= abvAtBottling) {
+    // Cask strength or very close, no dilution
+    bottlingVolumeLitres = remainingVolumeLitres;
+  } else {
+    // Dilution: LPA stays same, volume increases
+    bottlingVolumeLitres = lpaInCask / (bottlingAbv / 100);
+  }
+
+  // Account for ~2% bottling loss (filtration, spillage, etc.)
+  const bottlingLoss = 0.02;
+  const actualBottlingVolume = bottlingVolumeLitres * (1 - bottlingLoss);
+  const bottleSizeLitres = bottleSize / 1000;
+  const estimatedBottles = Math.floor(actualBottlingVolume / bottleSizeLitres);
+
+  // ── Tax/Duty Calculations ──
+  const tax = TAX_DATA[state.jurisdiction];
+  let totalDuty = 0;
+  let dutyBreakdown = [];
+
+  if (state.jurisdiction === 'US') {
+    // US: Federal Excise Tax per proof gallon
+    // Proof gallon = volume in gallons * (ABV * 2 / 100)
+    // Actually: proof = ABV * 2, proof gallon = gallons * (proof / 100)
+    const volumeUSGallons = actualBottlingVolume * 0.264172;
+    const proofGallons = volumeUSGallons * (bottlingAbv * 2 / 100);
+    totalDuty = proofGallons * tax.federalExcisePerProofGallon;
+    const dutyPerBottle = totalDuty / Math.max(estimatedBottles, 1);
+
+    dutyBreakdown = [
+      { label: 'Bottling Volume', value: `${actualBottlingVolume.toFixed(1)}L / ${volumeUSGallons.toFixed(1)} US Gal` },
+      { label: 'Proof Gallons', value: proofGallons.toFixed(2) },
+      { label: `Federal Excise Tax ($${tax.federalExcisePerProofGallon}/pg)`, value: `${tax.symbol}${totalDuty.toFixed(2)}` },
+      { label: 'FET per Bottle', value: `${tax.symbol}${dutyPerBottle.toFixed(2)}` },
+    ];
+  } else {
+    // UK & Ireland: Duty per LPA
+    const lpaBottled = actualBottlingVolume * (bottlingAbv / 100);
+    totalDuty = lpaBottled * tax.dutyPerLPA;
+    const vatOnDuty = totalDuty * tax.vatRate;
+    const totalWithVat = totalDuty + vatOnDuty;
+    const dutyPerBottle = totalDuty / Math.max(estimatedBottles, 1);
+    const totalPerBottle = totalWithVat / Math.max(estimatedBottles, 1);
+
+    dutyBreakdown = [
+      { label: 'Litres of Pure Alcohol (LPA)', value: lpaBottled.toFixed(2) },
+      { label: `Excise Duty (${tax.symbol}${tax.dutyPerLPA}/LPA)`, value: `${tax.symbol}${totalDuty.toFixed(2)}` },
+      { label: tax.vatLabel + ' on Duty', value: `${tax.symbol}${vatOnDuty.toFixed(2)}` },
+      { label: 'Total Duty + VAT', value: `${tax.symbol}${totalWithVat.toFixed(2)}`, isTotal: true },
+      { label: 'Duty per Bottle', value: `${tax.symbol}${dutyPerBottle.toFixed(2)}` },
+      { label: 'Total per Bottle (inc. VAT)', value: `${tax.symbol}${totalPerBottle.toFixed(2)}` },
+    ];
+
+    totalDuty = totalWithVat; // For hero display
+  }
+
+  // ── Year-by-year data for chart ──
+  const yearlyData = [];
+  for (let y = 0; y <= maturationYears; y++) {
+    const vol = fillVolumeLitres * Math.pow(1 - angelsShareRate / 100, y);
+    const abv = Math.max(40, abvFill - ((state.jurisdiction === 'US' ? 0.5 : 0.3) * y));
+    yearlyData.push({
+      year: yearFilled + y,
+      volume: vol,
+      abv: abv
+    });
+  }
+
+  // ── Render Results ──
+  renderResults({
+    fillVolumeLitres,
+    remainingVolumeLitres,
+    volumeLost,
+    angelsSharePercent: ((1 - retentionFactor) * 100),
+    abvFill,
+    abvAtBottling,
+    bottlingAbv,
+    bottlingVolumeLitres: actualBottlingVolume,
+    estimatedBottles,
+    bottleSize,
+    maturationYears,
+    yearFilled,
+    yearBottle,
+    totalDuty,
+    dutyBreakdown,
+    tax,
+    yearlyData,
+    lpaInCask
+  });
+
+  goToStep(3);
+}
+
+// ═══════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════
+function renderResults(data) {
+  const container = document.getElementById('resultsContent');
+  const sym = data.tax.symbol;
+
+  container.innerHTML = `
+    <h2 class="section-title" style="margin-bottom: 4px;">Your Cask Estimate</h2>
+    <p class="section-desc">${data.maturationYears}-year maturation in ${data.tax.name} &bull; ${data.yearFilled} → ${data.yearBottle}</p>
+
+    <div class="results-hero">
+      <div class="results-label">Estimated Bottle Yield</div>
+      <div class="results-value">${data.estimatedBottles} bottles</div>
+      <div class="results-sub">${data.bottleSize}ml at ${data.bottlingAbv}% ABV</div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="rc-label">Volume at Fill</div>
+        <div class="rc-value">${data.fillVolumeLitres.toFixed(0)}L</div>
+        <div class="rc-detail">${(data.fillVolumeLitres * 0.264172).toFixed(1)} US Gal</div>
+      </div>
+      <div class="result-card highlight">
+        <div class="rc-label">Remaining Volume</div>
+        <div class="rc-value">${data.remainingVolumeLitres.toFixed(1)}L</div>
+        <div class="rc-detail">${(data.remainingVolumeLitres * 0.264172).toFixed(1)} US Gal</div>
+      </div>
+      <div class="result-card warning">
+        <div class="rc-label">Angel's Share Lost</div>
+        <div class="rc-value">${data.volumeLost.toFixed(1)}L</div>
+        <div class="rc-detail">${data.angelsSharePercent.toFixed(1)}% total loss</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Estimated Cask ABV</div>
+        <div class="rc-value">${data.abvAtBottling.toFixed(1)}%</div>
+        <div class="rc-detail">Down from ${data.abvFill}% at fill</div>
+      </div>
+    </div>
+
+    <!-- Maturation Chart -->
+    <div class="chart-container">
+      <div class="chart-title">Maturation Timeline</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="maturationChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Duty Breakdown -->
+    <div class="breakdown-section">
+      <div class="breakdown-title">
+        <span>Tax & Duty Estimate</span>
+        <span style="font-size: 13px; font-weight: 400; color: var(--gray5); margin-left: auto;">${data.tax.name}</span>
+      </div>
+      <table class="breakdown-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.dutyBreakdown.map(row => `
+            <tr class="${row.isTotal ? 'total-row' : ''}">
+              <td>${row.label}</td>
+              <td>${row.value}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="info-box" style="margin-top: 16px;">
+        <span class="info-icon">📋</span>
+        <p>${data.tax.dutyNotes}</p>
+      </div>
+    </div>
+
+    <!-- Full Breakdown -->
+    <div class="breakdown-section">
+      <div class="breakdown-title">Full Calculation Breakdown</div>
+      <table class="breakdown-table">
+        <thead>
+          <tr><th>Parameter</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Fill Volume</td><td>${data.fillVolumeLitres.toFixed(0)}L</td></tr>
+          <tr><td>ABV at Fill</td><td>${data.abvFill}%</td></tr>
+          <tr><td>Maturation Period</td><td>${data.maturationYears} years</td></tr>
+          <tr><td>Angel's Share (total)</td><td>${data.angelsSharePercent.toFixed(1)}%</td></tr>
+          <tr><td>Remaining Volume in Cask</td><td>${data.remainingVolumeLitres.toFixed(1)}L</td></tr>
+          <tr><td>Estimated Cask ABV</td><td>${data.abvAtBottling.toFixed(1)}%</td></tr>
+          <tr><td>LPA in Cask</td><td>${data.lpaInCask.toFixed(2)}L</td></tr>
+          <tr><td>Target Bottling ABV</td><td>${data.bottlingAbv}%</td></tr>
+          <tr><td>Volume After Dilution</td><td>${data.bottlingVolumeLitres.toFixed(1)}L</td></tr>
+          <tr><td>Bottling Loss (~2%)</td><td>Included</td></tr>
+          <tr class="total-row"><td>Estimated Bottles (${data.bottleSize}ml)</td><td>${data.estimatedBottles}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="disclaimer">
+      <p><strong>Disclaimer:</strong> These calculations are estimates based on industry averages and the inputs you've provided. Actual results will vary based on warehouse conditions, cask quality, and other factors. Tax rates are approximate and subject to change. Always consult a licensed tax advisor or your bonded warehouse for precise figures. BAXUS does not provide tax or legal advice.</p>
+    </div>
+  `;
+
+  // Draw chart after DOM update
+  setTimeout(() => drawChart(data.yearlyData), 100);
+}
+
+// ═══════════════════════════════════════
+//  SIMPLE CANVAS CHART
+// ═══════════════════════════════════════
+function drawChart(data) {
+  const canvas = document.getElementById('maturationChart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const pad = { top: 30, right: 60, bottom: 40, left: 60 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+
+  const maxVol = Math.max(...data.map(d => d.volume)) * 1.1;
+  const minVol = 0;
+
+  // Background
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = '#E5E5E5';
+  ctx.lineWidth = 1;
+  const gridLines = 5;
+  for (let i = 0; i <= gridLines; i++) {
+    const y = pad.top + (chartH / gridLines) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+
+    // Y-axis labels
+    const val = maxVol - (maxVol / gridLines) * i;
+    ctx.fillStyle = '#999999';
+    ctx.font = '11px DM Sans, Helvetica, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(0) + 'L', pad.left - 8, y + 4);
+  }
+
+  // Draw volume line
+  ctx.strokeStyle = '#1C6D72';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+
+  const points = [];
+  data.forEach((d, i) => {
+    const x = pad.left + (i / Math.max(data.length - 1, 1)) * chartW;
+    const y = pad.top + (1 - (d.volume - minVol) / (maxVol - minVol)) * chartH;
+    points.push({ x, y });
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill under curve
+  ctx.lineTo(points[points.length - 1].x, pad.top + chartH);
+  ctx.lineTo(points[0].x, pad.top + chartH);
+  ctx.closePath();
+  const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+  gradient.addColorStop(0, 'rgba(28, 109, 114, 0.15)');
+  gradient.addColorStop(1, 'rgba(28, 109, 114, 0.02)');
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // Dots
+  points.forEach((p, i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#1C6D72';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // X-axis labels
+  ctx.fillStyle = '#999999';
+  ctx.font = '11px DM Sans, Helvetica, sans-serif';
+  ctx.textAlign = 'center';
+
+  // Show max ~10 labels
+  const step = Math.max(1, Math.floor(data.length / 10));
+  data.forEach((d, i) => {
+    if (i % step === 0 || i === data.length - 1) {
+      const x = pad.left + (i / Math.max(data.length - 1, 1)) * chartW;
+      ctx.fillText(d.year.toString(), x, h - pad.bottom + 20);
+    }
+  });
+
+  // Legend
+  ctx.fillStyle = '#1C6D72';
+  ctx.fillRect(pad.left, 8, 14, 3);
+  ctx.fillStyle = '#333333';
+  ctx.font = '12px DM Sans, Helvetica, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Volume in Cask (Litres)', pad.left + 20, 14);
+}
+
+// ═══════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════
+function resetCalculator() {
+  state = { jurisdiction: null, caskType: null, currentStep: 1 };
+  document.querySelectorAll('.jurisdiction-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.cask-type-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('btnStep1Next').disabled = true;
+  document.getElementById('customVolume').value = '';
+  document.getElementById('abvFill').value = '';
+  document.getElementById('abvCurrent').value = '';
+  document.getElementById('yearFilled').value = '';
+  document.getElementById('yearBottle').value = '';
+  document.getElementById('angelsShare').value = '2.0';
+  document.getElementById('bottlingAbv').value = '46';
+  goToStep(1);
+}
+
+// Handle resize for chart
+window.addEventListener('resize', () => {
+  const canvas = document.getElementById('maturationChart');
+  if (canvas && state.currentStep === 3) {
+    // Re-trigger calculation from existing inputs
+  }
+});
+</script>
+
+</body>
+</html>
