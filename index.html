@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Cask Calculator | BAXUS</title>
   <meta name="description" content="Estimate cask maturation, angel's share losses, bottling yield, and tax obligations for whiskey barrels across the US, UK, and Ireland.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1087,6 +1091,24 @@
 // ═══════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════
+//  SECURITY HELPERS
+// ═══════════════════════════════════════
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function clampNumber(val, min, max, fallback) {
+  const num = parseFloat(val);
+  if (isNaN(num)) return fallback;
+  return Math.min(Math.max(num, min), max);
+}
+
+const VALID_JURISDICTIONS = ['US', 'UK', 'IE'];
+const VALID_CASK_TYPES = ['bourbon_barrel', 'hogshead', 'sherry_butt', 'quarter_cask', 'custom'];
+
+// ═══════════════════════════════════════
 let state = {
   jurisdiction: null,
   caskType: null,
@@ -1143,9 +1165,11 @@ const TAX_DATA = {
 //  JURISDICTION SELECTION
 // ═══════════════════════════════════════
 function selectJurisdiction(code) {
+  if (!VALID_JURISDICTIONS.includes(code)) return;
   state.jurisdiction = code;
   document.querySelectorAll('.jurisdiction-card').forEach(c => c.classList.remove('selected'));
-  document.querySelector(`[data-jurisdiction="${code}"]`).classList.add('selected');
+  const card = document.querySelector('[data-jurisdiction="' + CSS.escape(code) + '"]');
+  if (card) card.classList.add('selected');
   document.getElementById('btnStep1Next').disabled = false;
 
   // Set sensible defaults based on jurisdiction
@@ -1168,7 +1192,9 @@ function selectJurisdiction(code) {
 //  CASK SELECTION
 // ═══════════════════════════════════════
 function selectCask(el) {
-  state.caskType = el.dataset.cask;
+  const caskType = el.dataset.cask;
+  if (!VALID_CASK_TYPES.includes(caskType)) return;
+  state.caskType = caskType;
   document.querySelectorAll('.cask-type-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
   // Clear custom volume when selecting preset
@@ -1177,7 +1203,8 @@ function selectCask(el) {
 
 function onCustomVolume() {
   const val = document.getElementById('customVolume').value;
-  if (val && parseFloat(val) > 0) {
+  const num = parseFloat(val);
+  if (!isNaN(num) && num > 0 && num <= 100000) {
     state.caskType = 'custom';
     document.querySelectorAll('.cask-type-card').forEach(c => c.classList.remove('selected'));
   }
@@ -1225,26 +1252,33 @@ function goToStep(step) {
 // ═══════════════════════════════════════
 function calculateAndShow() {
   // Gather inputs
-  const customVol = parseFloat(document.getElementById('customVolume').value);
+  const customVol = clampNumber(document.getElementById('customVolume').value, 0, 100000, 0);
   const volUnit = document.getElementById('volumeUnit').value;
   let fillVolumeLitres;
 
   if (customVol > 0) {
     fillVolumeLitres = volUnit === 'gallons' ? customVol * 3.78541 : customVol;
-  } else if (state.caskType && CASK_VOLUMES[state.caskType]) {
+  } else if (state.caskType && Object.prototype.hasOwnProperty.call(CASK_VOLUMES, state.caskType)) {
     fillVolumeLitres = CASK_VOLUMES[state.caskType];
   } else {
     alert('Please select a cask type or enter a custom volume.');
     return;
   }
 
-  const abvFill = parseFloat(document.getElementById('abvFill').value) || 63.5;
+  // Validate jurisdiction
+  const tax = TAX_DATA[state.jurisdiction];
+  if (!tax) {
+    alert('Please select a valid jurisdiction.');
+    return;
+  }
+
+  const abvFill = clampNumber(document.getElementById('abvFill').value, 0, 100, 63.5);
   const abvCurrentInput = document.getElementById('abvCurrent').value;
-  const yearFilled = parseInt(document.getElementById('yearFilled').value) || 2020;
-  const yearBottle = parseInt(document.getElementById('yearBottle').value) || 2030;
-  const angelsShareRate = parseFloat(document.getElementById('angelsShare').value) || 2.0;
-  const bottlingAbv = parseFloat(document.getElementById('bottlingAbv').value) || 46;
-  const bottleSize = parseInt(document.getElementById('bottleSize').value) || 700;
+  const yearFilled = clampNumber(document.getElementById('yearFilled').value, 1900, 2100, 2020);
+  const yearBottle = clampNumber(document.getElementById('yearBottle').value, 1900, 2100, 2030);
+  const angelsShareRate = clampNumber(document.getElementById('angelsShare').value, 0, 20, 2.0);
+  const bottlingAbv = clampNumber(document.getElementById('bottlingAbv').value, 20, 100, 46);
+  const bottleSize = clampNumber(document.getElementById('bottleSize').value, 50, 5000, 700);
 
   const maturationYears = yearBottle - yearFilled;
 
@@ -1292,7 +1326,7 @@ function calculateAndShow() {
   const estimatedBottles = Math.floor(actualBottlingVolume / bottleSizeLitres);
 
   // ── Tax/Duty Calculations ──
-  const tax = TAX_DATA[state.jurisdiction];
+  // (tax already validated above)
   let totalDuty = 0;
   let dutyBreakdown = [];
 
@@ -1374,38 +1408,39 @@ function calculateAndShow() {
 // ═══════════════════════════════════════
 function renderResults(data) {
   const container = document.getElementById('resultsContent');
-  const sym = data.tax.symbol;
+  const sym = escapeHTML(data.tax.symbol);
+  const e = escapeHTML; // shorthand
 
   container.innerHTML = `
     <h2 class="section-title" style="margin-bottom: 4px;">Your Cask Estimate</h2>
-    <p class="section-desc">${data.maturationYears}-year maturation in ${data.tax.name} &bull; ${data.yearFilled} &#8594; ${data.yearBottle}</p>
+    <p class="section-desc">${e(data.maturationYears)}-year maturation in ${e(data.tax.name)} &bull; ${e(data.yearFilled)} &#8594; ${e(data.yearBottle)}</p>
 
     <div class="results-hero">
       <div class="results-label">Estimated Bottle Yield</div>
-      <div class="results-value">${data.estimatedBottles} bottles</div>
-      <div class="results-sub">${data.bottleSize}ml at ${data.bottlingAbv}% ABV</div>
+      <div class="results-value">${e(data.estimatedBottles)} bottles</div>
+      <div class="results-sub">${e(data.bottleSize)}ml at ${e(data.bottlingAbv)}% ABV</div>
     </div>
 
     <div class="results-grid">
       <div class="result-card">
         <div class="rc-label">Volume at Fill</div>
-        <div class="rc-value">${data.fillVolumeLitres.toFixed(0)}L</div>
-        <div class="rc-detail">${(data.fillVolumeLitres * 0.264172).toFixed(1)} US Gal</div>
+        <div class="rc-value">${e(data.fillVolumeLitres.toFixed(0))}L</div>
+        <div class="rc-detail">${e((data.fillVolumeLitres * 0.264172).toFixed(1))} US Gal</div>
       </div>
       <div class="result-card highlight">
         <div class="rc-label">Remaining Volume</div>
-        <div class="rc-value">${data.remainingVolumeLitres.toFixed(1)}L</div>
-        <div class="rc-detail">${(data.remainingVolumeLitres * 0.264172).toFixed(1)} US Gal</div>
+        <div class="rc-value">${e(data.remainingVolumeLitres.toFixed(1))}L</div>
+        <div class="rc-detail">${e((data.remainingVolumeLitres * 0.264172).toFixed(1))} US Gal</div>
       </div>
       <div class="result-card warning">
         <div class="rc-label">Angel's Share Lost</div>
-        <div class="rc-value">${data.volumeLost.toFixed(1)}L</div>
-        <div class="rc-detail">${data.angelsSharePercent.toFixed(1)}% total loss</div>
+        <div class="rc-value">${e(data.volumeLost.toFixed(1))}L</div>
+        <div class="rc-detail">${e(data.angelsSharePercent.toFixed(1))}% total loss</div>
       </div>
       <div class="result-card">
         <div class="rc-label">Estimated Cask ABV</div>
-        <div class="rc-value">${data.abvAtBottling.toFixed(1)}%</div>
-        <div class="rc-detail">Down from ${data.abvFill}% at fill</div>
+        <div class="rc-value">${e(data.abvAtBottling.toFixed(1))}%</div>
+        <div class="rc-detail">Down from ${e(data.abvFill)}% at fill</div>
       </div>
     </div>
 
@@ -1420,8 +1455,8 @@ function renderResults(data) {
     <!-- Duty Breakdown -->
     <div class="breakdown-section">
       <div class="breakdown-title">
-        <span>Tax & Duty Estimate</span>
-        <span style="font-size: 13px; font-weight: 400; color: var(--gray5); margin-left: auto;">${data.tax.name}</span>
+        <span>Tax &amp; Duty Estimate</span>
+        <span style="font-size: 13px; font-weight: 400; color: var(--gray5); margin-left: auto;">${e(data.tax.name)}</span>
       </div>
       <table class="breakdown-table">
         <thead>
@@ -1433,8 +1468,8 @@ function renderResults(data) {
         <tbody>
           ${data.dutyBreakdown.map(row => `
             <tr class="${row.isTotal ? 'total-row' : ''}">
-              <td>${row.label}</td>
-              <td>${row.value}</td>
+              <td>${e(row.label)}</td>
+              <td>${e(row.value)}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1442,7 +1477,7 @@ function renderResults(data) {
 
       <div class="info-box" style="margin-top: 16px;">
         <span class="info-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="var(--teal1)" stroke-width="1.5"/><path d="M8 7v4.5" stroke="var(--teal1)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="4.5" r="1" fill="var(--teal1)"/></svg></span>
-        <p>${data.tax.dutyNotes}</p>
+        <p>${e(data.tax.dutyNotes)}</p>
       </div>
     </div>
 
@@ -1454,17 +1489,17 @@ function renderResults(data) {
           <tr><th>Parameter</th><th>Value</th></tr>
         </thead>
         <tbody>
-          <tr><td>Fill Volume</td><td>${data.fillVolumeLitres.toFixed(0)}L</td></tr>
-          <tr><td>ABV at Fill</td><td>${data.abvFill}%</td></tr>
-          <tr><td>Maturation Period</td><td>${data.maturationYears} years</td></tr>
-          <tr><td>Angel's Share (total)</td><td>${data.angelsSharePercent.toFixed(1)}%</td></tr>
-          <tr><td>Remaining Volume in Cask</td><td>${data.remainingVolumeLitres.toFixed(1)}L</td></tr>
-          <tr><td>Estimated Cask ABV</td><td>${data.abvAtBottling.toFixed(1)}%</td></tr>
-          <tr><td>LPA in Cask</td><td>${data.lpaInCask.toFixed(2)}L</td></tr>
-          <tr><td>Target Bottling ABV</td><td>${data.bottlingAbv}%</td></tr>
-          <tr><td>Volume After Dilution</td><td>${data.bottlingVolumeLitres.toFixed(1)}L</td></tr>
+          <tr><td>Fill Volume</td><td>${e(data.fillVolumeLitres.toFixed(0))}L</td></tr>
+          <tr><td>ABV at Fill</td><td>${e(data.abvFill)}%</td></tr>
+          <tr><td>Maturation Period</td><td>${e(data.maturationYears)} years</td></tr>
+          <tr><td>Angel's Share (total)</td><td>${e(data.angelsSharePercent.toFixed(1))}%</td></tr>
+          <tr><td>Remaining Volume in Cask</td><td>${e(data.remainingVolumeLitres.toFixed(1))}L</td></tr>
+          <tr><td>Estimated Cask ABV</td><td>${e(data.abvAtBottling.toFixed(1))}%</td></tr>
+          <tr><td>LPA in Cask</td><td>${e(data.lpaInCask.toFixed(2))}L</td></tr>
+          <tr><td>Target Bottling ABV</td><td>${e(data.bottlingAbv)}%</td></tr>
+          <tr><td>Volume After Dilution</td><td>${e(data.bottlingVolumeLitres.toFixed(1))}L</td></tr>
           <tr><td>Bottling Loss (~2%)</td><td>Included</td></tr>
-          <tr class="total-row"><td>Estimated Bottles (${data.bottleSize}ml)</td><td>${data.estimatedBottles}</td></tr>
+          <tr class="total-row"><td>Estimated Bottles (${e(data.bottleSize)}ml)</td><td>${e(data.estimatedBottles)}</td></tr>
         </tbody>
       </table>
     </div>
