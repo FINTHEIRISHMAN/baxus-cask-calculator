@@ -194,7 +194,7 @@
     /* ── JURISDICTION SELECTOR ── */
     .jurisdiction-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       margin-bottom: 8px;
     }
@@ -712,7 +712,7 @@
 
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
-      .jurisdiction-grid { grid-template-columns: 1fr; }
+      .jurisdiction-grid { grid-template-columns: repeat(2, 1fr); }
       .cask-type-grid { grid-template-columns: 1fr; }
       .form-row, .form-row-3 { grid-template-columns: 1fr; }
       .results-grid { grid-template-columns: 1fr; }
@@ -891,6 +891,14 @@
         <span class="flag"><svg width="36" height="26" viewBox="0 0 36 26" rx="3" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="26" rx="3" fill="white"/><rect width="12" height="26" rx="3" fill="#169B62"/><rect x="24" width="12" height="26" fill="#FF883E"/></svg></span>
         <div class="country-name">Ireland</div>
         <div class="country-detail">Excise Duty + VAT</div>
+      </div>
+      <div class="jurisdiction-card" data-jurisdiction="AU" onclick="selectJurisdiction('AU')">
+        <div class="check-badge">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="flag"><svg width="36" height="26" viewBox="0 0 36 26" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="26" rx="3" fill="#00008B"/><path d="M0 0L15 10M15 0L0 10" stroke="white" stroke-width="2.5"/><path d="M0 0L15 10M15 0L0 10" stroke="#E31D3C" stroke-width="1.2"/><path d="M7.5 0V10M0 5H15" stroke="white" stroke-width="4"/><path d="M7.5 0V10M0 5H15" stroke="#E31D3C" stroke-width="2"/><circle cx="28" cy="8" r="1" fill="white"/><circle cx="31" cy="13" r=".8" fill="white"/><circle cx="33" cy="9" r=".8" fill="white"/><circle cx="30" cy="5" r=".8" fill="white"/><circle cx="26" cy="18" r=".8" fill="white"/><polygon points="12,17 12.6,19 14.5,19 13,20 13.5,22 12,20.8 10.5,22 11,20 9.5,19 11.4,19" fill="white"/></svg></span>
+        <div class="country-name">Australia</div>
+        <div class="country-detail">Excise Duty + GST</div>
       </div>
     </div>
 
@@ -1105,7 +1113,7 @@ function clampNumber(val, min, max, fallback) {
   return Math.min(Math.max(num, min), max);
 }
 
-const VALID_JURISDICTIONS = ['US', 'UK', 'IE'];
+const VALID_JURISDICTIONS = ['US', 'UK', 'IE', 'AU'];
 const VALID_CASK_TYPES = ['bourbon_barrel', 'hogshead', 'sherry_butt', 'quarter_cask', 'custom'];
 
 // ═══════════════════════════════════════
@@ -1158,6 +1166,17 @@ const TAX_DATA = {
     vatRate: 0.23, // 23% VAT
     vatLabel: 'VAT (23%)',
     dutyNotes: 'Irish Alcohol Products Tax at €42.57 per litre of pure alcohol (LPA). VAT at 23% applies on the duty-inclusive price.'
+  },
+  AU: {
+    name: 'Australia',
+    currency: 'AUD',
+    symbol: 'A$',
+    // Australia Excise: A$104.31 per litre of alcohol (LAL) as of Feb 2025
+    // Indexed twice yearly (Feb & Aug) in line with CPI
+    dutyPerLPA: 104.31,
+    vatRate: 0.10, // 10% GST
+    vatLabel: 'GST (10%)',
+    dutyNotes: 'Australian Excise at A$104.31 per litre of alcohol (LAL). Rates are indexed twice yearly (Feb & Aug) with CPI. GST at 10% applies on the duty-inclusive price. Australia has the third-highest spirits tax in the world.'
   }
 };
 
@@ -1181,6 +1200,10 @@ function selectJurisdiction(code) {
     if (!abvFill.value) abvFill.value = '62.5';
     angelsShare.value = '4.0';
     bottleSize.value = '750';
+  } else if (code === 'AU') {
+    if (!abvFill.value) abvFill.value = '63.5';
+    angelsShare.value = '3.5'; // Australian climate: higher angel's share
+    bottleSize.value = '700';
   } else {
     if (!abvFill.value) abvFill.value = '63.5';
     angelsShare.value = '2.0';
@@ -1370,7 +1393,8 @@ function calculateAndShow() {
   const yearlyData = [];
   for (let y = 0; y <= maturationYears; y++) {
     const vol = fillVolumeLitres * Math.pow(1 - angelsShareRate / 100, y);
-    const abv = Math.max(40, abvFill - ((state.jurisdiction === 'US' ? 0.5 : 0.3) * y));
+    const abvDecline = (state.jurisdiction === 'US' || state.jurisdiction === 'AU') ? 0.5 : 0.3;
+    const abv = Math.max(40, abvFill - (abvDecline * y));
     yearlyData.push({
       year: yearFilled + y,
       volume: vol,
